@@ -37,7 +37,7 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 
 	private static final long serialVersionUID = 1L;
 
-	public FloatOption betaOption = new FloatOption("betaOption", 'z', "Lamda 2 value.", 0.8, 0.0, 1);
+	public FloatOption betaOption = new FloatOption("betaOption", 'z', "betaOption", 0.8, 0.0, 1);
 
 	public ClassOption detectorLearnerOption = new ClassOption("detectorBaseLearner", 'b', "Classifier to train.",
 			Classifier.class, "bayes.NaiveBayes");
@@ -45,8 +45,7 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 	public ClassOption driftDetectionMethodOption = new ClassOption("driftDetectionMethod", 'd',
 			"Drift detection method to use.", DriftDetectionMethod.class, "DDM2");
 
-	public IntOption threshHoldOption = new IntOption("threshHoldOption", 'e', "threshHoldOption", 300, 200, 450);// Alpha
-																													// threshold
+	public IntOption threshHoldOption = new IntOption("threshHoldOption", 'e', "threshHoldOption", 300, 200, 450);
 
 	public IntOption threshHoldTwoOption = new IntOption("threshHoldTwoOption", 's', "Relative Difference count", 30,
 			10, 50);
@@ -64,22 +63,19 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 	protected double detectorWeight;
 	protected BoastedInstances warningChunk;
 	protected int correctCount1;
-	protected int noOfFalseAlarmsDetected = 0; 
 	protected int correctCount2;
 	protected boolean useEnsemble1 = true;
 	protected boolean useBothEnsemble = false;
 	protected int correctCountWindow;
 	protected long[] classDistributionsForWarrning;
+
 	@Override
-	public void prepareForUseImpl(TaskMonitor monitor,
-			ObjectRepository repository) {
+	public void prepareForUseImpl(TaskMonitor monitor, ObjectRepository repository) {
 		super.prepareForUseImpl(monitor, repository);
 
-		this.detectorClassifier = ((Classifier) getPreparedClassOption(this.detectorLearnerOption))
-				.copy();
+		this.detectorClassifier = ((Classifier) getPreparedClassOption(this.detectorLearnerOption)).copy();
 		this.detectorClassifier.resetLearning();
-		this.alarmDetectorClassifier = ((Classifier) getPreparedClassOption(this.detectorLearnerOption))
-				.copy();
+		this.alarmDetectorClassifier = ((Classifier) getPreparedClassOption(this.detectorLearnerOption)).copy();
 		this.alarmDetectorClassifier.resetLearning();
 		this.driftDetectionMethod = ((DriftDetectionMethod) getPreparedClassOption(this.driftDetectionMethodOption))
 				.copy();
@@ -93,11 +89,9 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 	public void resetLearningImpl() {
 		super.resetLearningImpl();
 
-		this.detectorClassifier = ((Classifier) getPreparedClassOption(this.detectorLearnerOption))
-				.copy();
+		this.detectorClassifier = ((Classifier) getPreparedClassOption(this.detectorLearnerOption)).copy();
 		this.detectorClassifier.resetLearning();
-		this.alarmDetectorClassifier = ((Classifier) getPreparedClassOption(this.detectorLearnerOption))
-				.copy();
+		this.alarmDetectorClassifier = ((Classifier) getPreparedClassOption(this.detectorLearnerOption)).copy();
 		this.alarmDetectorClassifier.resetLearning();
 		this.driftDetectionMethod = ((DriftDetectionMethod) getPreparedClassOption(this.driftDetectionMethodOption))
 				.copy();
@@ -109,14 +103,14 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 
 	@Override
 	public void trainOnInstanceImpl(Instance inst) {
-			this.initVariables();
+		this.initVariables();
 
 		this.classDistributionsForWarrning[(int) inst.classValue()]++;
 		this.classDistributions[(int) inst.classValue()]++;
 		this.currentChunk.add(inst);
-		this.detectorClassifier.trainOnInstance(inst);//training on each instance
+		this.detectorClassifier.trainOnInstance(inst);
 		this.processedInstances++;
-			int trueClass = (int) inst.classValue();
+		int trueClass = (int) inst.classValue();
 		boolean prediction;
 		if (Utils.maxIndex(this.detectorClassifier.getVotesForInstance(inst)) == trueClass) {
 			prediction = true;
@@ -127,25 +121,24 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 
 		switch (this.ddmLevel) {
 		case DriftDetectionMethod.DDM_WARNING_LEVEL:
-			isWarning=true;
+			isWarning = true;
 			if (newClassifierReset == true) {
 				this.alarmDetectorClassifier.resetLearning();
 				newClassifierReset = false;
 			}
-			BoastedInstance inst2=new BoastedInstance((Instance)inst.copy());
-			//TODO: make factor
-			inst2.setWeight(inst.weight()*boostOption.getValue());
+			BoastedInstance inst2 = new BoastedInstance((Instance) inst.copy());
+			// TODO: make factor
+			inst2.setWeight(inst.weight() * boostOption.getValue());
 			inst2.setWarningInstance(true);
-		
+
 			this.warningChunk.add(inst2);
 			this.alarmDetectorClassifier.trainOnInstance(inst);
 			break;
 
-		case DriftDetectionMethod.DDM_OUTCONTROL_LEVEL://drift detected !!
-			
-			
-			this.correctCount1=0; 
-			this.correctCount2=0;
+		case DriftDetectionMethod.DDM_OUTCONTROL_LEVEL:// drift detected !!
+
+			this.correctCount1 = 0;
+			this.correctCount2 = 0;
 			this.isAlarm = true;
 			this.isDriftDetected = true;
 			this.detectorClassifier = null;
@@ -155,54 +148,55 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 			}
 
 			this.detectorWeight = this.computeWeight(this.detectorClassifier, this.currentChunk);
-		
-			this.processChunk(true,false);
+
+			this.processChunk(true, false);
 			this.alarmDetectorClassifier = ((Classifier) getPreparedClassOption(this.detectorLearnerOption)).copy();
 			this.alarmDetectorClassifier.resetLearning();
 
 			// reset chunk
-    		this.classDistributions = null;
-    		this.classDistributionsForWarrning = null;
-    	
-    		this.warningChunk = null;
-    		this.initVariables();
-    		this.classDistributions[(int) inst.classValue()]++;
-    		this.currentChunk.add(inst);
-    		this.detectorClassifier.trainOnInstance(inst);
-    	    		this.isDriftDetected = false;
+			this.classDistributions = null;
+			this.classDistributionsForWarrning = null;
+
+			this.warningChunk = null;
+			this.initVariables();
+			this.classDistributions[(int) inst.classValue()]++;
+			this.currentChunk.add(inst);
+			this.detectorClassifier.trainOnInstance(inst);
+			this.isDriftDetected = false;
 			this.isAlarm = false;
-			isWarning=false;
+			isWarning = false;
 			break;
 
-		case DriftDetectionMethod.DDM_INCONTROL_LEVEL:  //no drift
-			if(isWarning){
-				for(Instance instance:this.warningChunk){
-					if(instance instanceof BoastedInstance && ((BoastedInstance) instance).isWarningInstance()){
+		case DriftDetectionMethod.DDM_INCONTROL_LEVEL: // no drift
+			if (isWarning) {
+				for (Instance instance : this.warningChunk) {
+					if (instance instanceof BoastedInstance && ((BoastedInstance) instance).isWarningInstance()) {
 						((BoastedInstance) instance).setWarningInstance(false);
-						instance.setWeight(instance.weight()/2);
+						instance.setWeight(instance.weight() / 2);
 					}
 				}
-				isWarning=false;//****false alarm
-				this.noOfFalseAlarmsDetected=this.noOfFalseAlarmsDetected+1;
+				isWarning = false;
 			}
 			newClassifierReset = true;
 			break;
 		}
-		
+
 		if (!isWarning) {
-			this.warningChunk.add(new BoastedInstance((Instance)inst));
+			this.warningChunk.add(new BoastedInstance((Instance) inst));
 		}
-	
-		if (this.processedInstances % this.chunkSize == 0) { // if chunk size reached
-			//TODO make 
-			if(this.processedInstances % this.chunkSize * 3 == 0){
-				this.processChunk(false,true);//Passive updation
-			}else{
-				this.processChunk(false,false);}
+
+		if (this.processedInstances % this.chunkSize == 0) { // if chunk size
+																// reached
+			// TODO make
+			if (this.processedInstances % this.chunkSize * 3 == 0) {
+				this.processChunk(false, true);
+			} else {
+				this.processChunk(false, false);
+			}
 			determinVotingLogic();
-				correctCount1=0;
-			correctCount2=0;
-			
+			correctCount1 = 0;
+			correctCount2 = 0;
+
 		}
 	}
 
@@ -211,20 +205,21 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 	 * processed. Determines the voting logic for the next testing phase
 	 **/
 	private void determinVotingLogic() {
-		
-		if((correctCount1>threshHoldOption.getValue() && correctCount2>threshHoldOption.getValue()) && (Math.abs(correctCount1-correctCount2)<threshHoldTwoOption.getValue())) {
-			this.useBothEnsemble=true;
-	
+
+		if ((correctCount1 > threshHoldOption.getValue() && correctCount2 > threshHoldOption.getValue())
+				&& (Math.abs(correctCount1 - correctCount2) < threshHoldTwoOption.getValue())) {
+			this.useBothEnsemble = true;
+
 		}
 
-		else if(correctCount1>=correctCount2){
-			this.useEnsemble1=true;
-			this.useBothEnsemble=false;
-		
-		}else{
-			this.useEnsemble1=false;
-			this.useBothEnsemble=false;
-		
+		else if (correctCount1 >= correctCount2) {
+			this.useEnsemble1 = true;
+			this.useBothEnsemble = false;
+
+		} else {
+			this.useEnsemble1 = false;
+			this.useBothEnsemble = false;
+
 		}
 	}
 
@@ -239,28 +234,25 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 			this.warningChunk = new BoastedInstances(new Instances(this.getModelContext()));
 		}
 		if (this.classDistributions == null) {
-			this.classDistributions = new long[this.getModelContext()
-					.classAttribute().numValues()];
+			this.classDistributions = new long[this.getModelContext().classAttribute().numValues()];
 
 			for (int i = 0; i < this.classDistributions.length; i++) {
 				this.classDistributions[i] = 0;
 			}
 		}
-		
+
 		if (this.classDistributionsForWarrning == null) {
-			this.classDistributionsForWarrning = new long[this.getModelContext()
-					.classAttribute().numValues()];
+			this.classDistributionsForWarrning = new long[this.getModelContext().classAttribute().numValues()];
 
 			for (int i = 0; i < this.classDistributionsForWarrning.length; i++) {
 				this.classDistributionsForWarrning[i] = 0;
 			}
 		}
 	}
-	
 
-	protected void processChunk(boolean isDrift,boolean isReplace) {
-        // Compute weights
-		double candidateClassifierWeight=0;
+	protected void processChunk(boolean isDrift, boolean isReplace) {
+		// Compute weights
+		double candidateClassifierWeight = 0;
 		if (isDriftDetected) {
 			processWhenDrift(candidateClassifierWeight);
 
@@ -269,25 +261,24 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 
 		}
 
+		int ensembleSize = java.lang.Math.min(this.storedLearners.length, this.maxMemberCount);
+		this.ensemble = new Classifier[ensembleSize];
+		this.ensembleWeights = new double[ensembleSize];
 
-        int ensembleSize = java.lang.Math.min(this.storedLearners.length, this.maxMemberCount);
-        this.ensemble = new Classifier[ensembleSize];
-        this.ensembleWeights = new double[ensembleSize];
+		java.util.Arrays.sort(this.storedWeights, weightComparator);
 
-        java.util.Arrays.sort(this.storedWeights, weightComparator);
+		// Select top k classifiers to construct the ensemble
+		int storeSize = this.storedLearners.length;
+		for (int i = 0; i < ensembleSize; i++) {
+			this.ensembleWeights[i] = this.storedWeights[storeSize - i - 1][0];
+			this.ensemble[i] = this.storedLearners[(int) this.storedWeights[storeSize - i - 1][1]];
+		}
 
-        // Select top k classifiers to construct the ensemble
-        int storeSize = this.storedLearners.length;
-        for (int i = 0; i < ensembleSize; i++) {
-            this.ensembleWeights[i] = this.storedWeights[storeSize - i - 1][0];
-            this.ensemble[i] = this.storedLearners[(int) this.storedWeights[storeSize - i - 1][1]];
-        }
-
-        this.classDistributions = null;
-        this.currentChunk = null;
-        this.candidateClassifier = (Classifier) getPreparedClassOption(this.learnerOption);
-        this.candidateClassifier.resetLearning();
-    }
+		this.classDistributions = null;
+		this.currentChunk = null;
+		this.candidateClassifier = (Classifier) getPreparedClassOption(this.learnerOption);
+		this.candidateClassifier.resetLearning();
+	}
 
 	private void processWhenNoDrift(double candidateClassifierWeight) {
 		if (this.currentChunk.numInstances() > this.numFolds) {
@@ -322,7 +313,7 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 	}
 
 	private void processWhenDrift(double candidateClassifierWeight) {
-		if (this.warningChunk.numInstances() > this.numFolds) {//!!!!!!!!!!!! warningChunk pe opeartion
+		if (this.warningChunk.numInstances() > this.numFolds) {
 			candidateClassifierWeight = this.computeCandidateWeight(this.candidateClassifier, this.warningChunk,
 					this.numFolds);
 		} else {
@@ -374,14 +365,13 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 		for (int i = 0; i < chunk.numInstances(); i++) {
 			try {
 				voteSum = 0;
-				for (double element : learner.getVotesForInstance(chunk
-						.instance(i))) {
+				for (double element : learner.getVotesForInstance(chunk.instance(i))) {
 					voteSum += element;
 				}
 
 				if (voteSum > 0) {
-					f_ci = learner.getVotesForInstance(chunk.instance(i))[(int) chunk
-							.instance(i).classValue()] / voteSum;
+					f_ci = learner.getVotesForInstance(chunk.instance(i))[(int) chunk.instance(i).classValue()]
+							/ voteSum;
 					mse_i += (1 - f_ci) * (1 - f_ci);
 				} else {
 					mse_i += 1;
@@ -396,7 +386,7 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 
 		return java.lang.Math.max(mse_r - mse_i, 0);
 	}
-	
+
 	/**
 	 * Predicts a class for an example.
 	 */
@@ -407,27 +397,23 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 		if (this.trainingWeightSeenByModel > 0.0) {
 			for (int i = 0; i < this.ensemble.length; i++) {
 				if (this.ensembleWeights[i] > 0.0) {
-					DoubleVector vote = new DoubleVector(
-							this.ensemble[i].getVotesForInstance(inst));
+					DoubleVector vote = new DoubleVector(this.ensemble[i].getVotesForInstance(inst));
 
 					if (vote.sumOfValues() > 0.0) {
 						vote.normalize();
 						// scale weight and prevent overflow
-						vote.scaleValues(this.ensembleWeights[i]
-								/ (1.0 * this.ensemble.length + 2));
+						vote.scaleValues(this.ensembleWeights[i] / (1.0 * this.ensemble.length + 2));
 						combinedVote.addValues(vote);
 					}
 				}
 			}
 
-			DoubleVector detectorVote = new DoubleVector(
-					this.detectorClassifier.getVotesForInstance(inst));
+			DoubleVector detectorVote = new DoubleVector(this.detectorClassifier.getVotesForInstance(inst));
 
 			if (detectorVote.sumOfValues() > 0.0) {
 				detectorVote.normalize();
-			
-				detectorVote.scaleValues(this.detectorWeight
-						/ (1.0 * this.ensemble.length + 2));
+
+				detectorVote.scaleValues(this.detectorWeight / (1.0 * this.ensemble.length + 2));
 				combinedVote.addValues(detectorVote);
 			}
 		}
@@ -435,10 +421,4 @@ public class IncrementalAWEDetectorAbstain extends AccuracyWeightedEnsemble {
 		return combinedVote.getArrayRef();
 	}
 
-	public int getNoOfFalseAlarmsDetected() {
-		return noOfFalseAlarmsDetected;
-	}
-	
-	
-	
 }
