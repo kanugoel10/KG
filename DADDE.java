@@ -1,21 +1,5 @@
 /*
- *    AccuracyUpdatedEnsemble2.java
- *    Copyright (C) 2010 Poznan University of Technology, Poznan, Poland
- *    @author Dariusz Brzezinski (dariusz.brzezinski@cs.put.poznan.pl)
- *
- *    This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation; either version 2 of the License, or
- *    (at your option) any later version.
- *
- *    This program is distributed in the hope that it will be useful,
- *    but WITHOUT ANY WARRANTY; without even the implied warranty of
- *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *    GNU General Public License for more details.
- *
- *    You should have received a copy of the GNU General Public License
- *    along with this program; if not, write to the Free Software
- *    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *    DADDE.java
  */
 package moa.classifiers.meta;
 
@@ -100,12 +84,12 @@ public class DADDE extends IncrementalAWEDetectorAbstain {
 	public void resetLearningImpl() {
 		super.resetLearningImpl();
 		this.currentChunk = null;
-		this.warningChunk = null;// ************VPN
+		this.warningChunk = null;
 		this.classDistributions = null;
 		this.classDistributionsForWarrning = null;
 		this.processedInstances = 0;
 		this.learners1 = new Classifier[0];
-		this.learners2 = new Classifier[0];// ****************VPN
+		this.learners2 = new Classifier[0];
 
 		this.candidate = (Classifier) getPreparedClassOption(this.learnerOption);
 		this.candidate.resetLearning();
@@ -257,11 +241,11 @@ public class DADDE extends IncrementalAWEDetectorAbstain {
 
 	@Override
 	public void trainOnInstanceImpl(Instance inst) {
-		// Made a call to the parent that is detector
+	
 		super.trainOnInstanceImpl(inst);
 		ExecutorService executorServiceForGlobalPrediction = Executors.newFixedThreadPool(2);
 		executorServiceForGlobalPrediction.execute(new Runnable() {
-			// after training done
+			
 			@Override
 			public void run() {
 				if (Utils.maxIndex(getGlobalPredictionForEnsemble1(inst)) == inst.classValue()) {
@@ -296,7 +280,7 @@ public class DADDE extends IncrementalAWEDetectorAbstain {
 		processForEnsemble2(executorServiceForEnsembleUpdationAndWeightUpdation);
 		if (!isDrift && (isReplace || learners1.length < this.memberCountOption.getValue())) {
 			processForEnsemble1(executorServiceForEnsembleUpdationAndWeightUpdation);
-		} // ENsemble 1 is passive
+		} 
 		executorServiceForEnsembleUpdationAndWeightUpdation.shutdown();
 		try {
 			executorServiceForEnsembleUpdationAndWeightUpdation.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
@@ -681,11 +665,9 @@ public class DADDE extends IncrementalAWEDetectorAbstain {
 
 	private void trainingWithBagging(boolean isDrift) {
 		if (!isDrift) {
-			trainEnsemble1();// passive trained only if drift not there only
-								// when 3*chunk cycles reached only the isDrift
-								// is false
+			trainEnsemble1();
 		}
-		trainEnsemble2();// active is trained every time
+		trainEnsemble2();
 	}
 
 	private void trainEnsemble1() {
